@@ -47,10 +47,11 @@
 | IS-01 | AI 스마트 엑셀·HWP 업로더 | 비표준 포맷 자동 인식·매핑·정제 (F1) | Phase 1 |
 | IS-02 | 통합 데이터 허브 | 멀티소스 수집·정제 파이프라인 (F2) | Phase 1 |
 | IS-03 | 감사 대응 무결성 리포트 자동 생성 | xAPI 기반 감사 증빙 리포트 (F3) | Phase 1 |
-| IS-04 | Local Fit Open Badge 발급·관리 | 지역 정착 의지 검증 배지 시스템 (F4) | Phase 1 |
+| IS-04 | 플랫폼 내부 배지(Local Fit) 판정 및 관리 | 지역 정착 의지 검증 프로세스 및 프로필 노출 (F4) | Phase 1 |
+| IS-04-1 | Open Badge 2.0 스펙 연동 및 외부 발급 | 외부 지갑(Backpack) 반출을 위한 인프라 연동 | Phase 2 |
 | IS-05 | 기업용 인재 열람권 | Outbound Recruiting 인재 프로필 열람 (F5) | Phase 1 |
 | IS-06 | 관리자 전용 ROI·성과 대시보드 | 성과 가시화 및 ROI 증명 (F6) | Phase 1 |
-| IS-07 | LTI 표준 기반 LMS 플러그인 연동 | 기존 LMS 연동 (F7) — 파트너 확보 조건부 | Phase 1 (조건부) |
+| IS-07 | LTI 표준 기반 LMS 플러그인 연동 | 기존 LMS 연동 (F7) — 파트너 확보 시 | Phase 2 |
 | IS-08 | xAPI 기반 Skill-gap 진단 대시보드 | 역량 진단 대시보드 (F8) | Phase 2 |
 | IS-09 | AI 기반 맞춤형 후속 교육 자동 매핑 | 교육 자동 추천 (F9) | Phase 2 |
 | IS-10 | CSAP 대응 백엔드 보안 게이트웨이 | 망분리 대응 보안 모듈 (F10) | Phase 2+ |
@@ -67,15 +68,22 @@
 
 #### 1.2.3 Constraints (제약사항) / Assumptions (가정)
 
-**Constraints:**
+**Constraints (Technology & Business):**
 
-| 제약 ID | 제약사항 | 근거 |
+| 제약 ID | 제약사항 | 근거 / 관련 |
 |:---|:---|:---|
-| CON-01 | CSAP 인증 미보유 SaaS는 공공기관 도입 반려율 100% | PRD §1-4 P4-1 |
+| CON-01 | CSAP 인증을 우회/대비하기 위한 보안 요건 완화 및 단일 테넌트 분리 구조 지향 | PRD §1-4 P4-1 |
 | CON-02 | 기관별 다기종 포맷(HWP·구형 엑셀) 표준화율 현재 0% | PRD §1-1 P1-4 |
-| CON-03 | 레거시 온프레미스 시스템(매몰비용 약 50억 추정) 존재로 대체 불가 → API 플러그인 기생 전략 필수 | PRD §5 레거시 기득권 |
-| CON-04 | xAPI 표준 스키마 기반 데이터 구조 채택 필수 | PRD §9-3 Lock-in 및 데이터 이식성 |
-| CON-05 | Phase 1 M9 내 C-3/C-2 레퍼런스 3건 선점 필수 (대형 SI 잠식 대응) | PRD §10-3 R4 |
+| CON-03 | 레거시 온프레미스 대체 불가 (기생 전략). 단, LTI 연동은 디버깅 난이도 고려 Phase 2로 연기 | PRD §5 / Vibe Coding 최적화 |
+| CON-04 | xAPI 표준 스키마 기반 데이터 구조 채택 필수 | PRD §9-3 / Lock-in 방지 |
+| CON-05 | Phase 1 M9 내 C-3/C-2 레퍼런스 3건 선점 필수 | PRD §10-3 R4 |
+| C-TEC-001 | 모든 서비스는 Next.js (App Router) 기반 단일 풀스택 프레임워크로 구현 | 바이브코딩 최적화 MVP |
+| C-TEC-002 | 서버 측 로직은 Next.js Server Actions 또는 Route Handlers 사용 | 백엔드 서버 분리 금지 |
+| C-TEC-003 | DB는 Prisma 기반으로 로컬 SQLite, 배포 시 Supabase (PostgreSQL) 사용 | 인프라 설정 복잡도 최소화 |
+| C-TEC-004 | UI 및 스타일링은 Tailwind CSS와 shadcn/ui 사용 강제 | 일관된 디자인 코드 생성 |
+| C-TEC-005 | 별도 Python 서버 없이 Vercel AI SDK를 통해 Next.js 내부에서 언어모델 직접 제어 | 서버리스 아키텍처 |
+| C-TEC-006 | LLM 호출은 Google Gemini API를 기본으로 사용 | 높은 성능 및 표준성 |
+| C-TEC-007 | 배포 및 인프라는 Vercel 리소스로 단일화 (불필요한 Redis 배제) | CI/CD Git Push 자동화 |
 
 **Assumptions:**
 
@@ -152,14 +160,13 @@
 
 | 시스템 ID | 외부 시스템명 | 연동 방식 | 설명 |
 |:---|:---|:---|:---|
-| EXT-01 | 위탁 기관 데이터 소스 | 파일 업로드(엑셀, HWP, CSV) | 기관별 비표준 포맷 성과 데이터 원본 |
-| EXT-02 | xAPI LRS (Learning Record Store) | xAPI 표준 REST API | 학습 경험 데이터 수집·저장 백엔드 |
-| EXT-03 | 기존 LMS (자이닉스 코스모스 등) | LTI 1.3 프로토콜 | 기관 기존 학사망 LMS 연동 |
+| EXT-01 | 위탁 기관 데이터 소스 | Client-side 파싱(SheetJS) 후 JSON | 기관별 비표준 포맷 성과 데이터 (서버 타임아웃 방지) |
+| EXT-02 | xAPI LRS | xAPI 표준 연동 (또는 Supabase) | 학습 경험 데이터 수집·저장 |
+| EXT-03 | 기존 LMS (자이닉스 코스모스 등) | LTI 1.3 다운사이징 | 인증 구조 복잡도를 피하기 위한 Mock-up(Phase 1) |
 | EXT-04 | Open Badge 인프라 | IMS Open Badges 2.0 API | 디지털 배지 발급·검증·호스팅 |
-| EXT-05 | 기관 HR/ERP 시스템 | REST API / 파일 연동 | 채용 데이터, 재직 이력, 인사 정보 연동 |
-| EXT-06 | Mixpanel / 분석 플랫폼 | SDK·API | 사용자 행동 분석, 퍼널 트래킹 |
-| EXT-07 | 알림·커뮤니케이션 서비스 | Webhook / SMTP / Push | 업로드 완료, 에러 알림, 보고서 생성 알림 |
-| EXT-08 | 클라우드 인프라 (CSP) | IaaS/PaaS API | 컴퓨팅 리소스, 스토리지, 네트워크 |
+| EXT-05 | Google Gemini / AI | Vercel AI SDK | 데이터 구조 추출 및 클렌징 프롬프트 제어 |
+| EXT-06 | DB 및 Storage | Prisma / Supabase | 통합 PostgreSQL 데이터베이스 및 클라우드 스토리지 |
+| EXT-07 | 분석 및 배포(Vercel) | Next.js Serverless | Git-push 기반 프론트/백 단일 배포, Vercel 로그 모니터링 |
 
 ### 3.2 Client Applications
 
@@ -170,19 +177,17 @@
 | CLI-03 | 웹 애플리케이션 (학습자용) | 수료생/학습자 | Badge 프로필 관리, 학습 이력 조회 |
 | CLI-04 | 관리 콘솔 (시스템 관리자용) | 시스템 관리자 | 테넌트 관리, 모니터링, 설정 |
 
-### 3.3 API Overview
+### 3.3 Data Access & Server Actions Overview
+> Vibe Coding 최적화를 위해 내부 API를 Next.js Server Actions(`"use server"`)로 대체하고 외부 연동에만 Route Handlers(`/api/*`)를 사용합니다.
 
-| API 그룹 | 엔드포인트 패턴 | 프로토콜 | 인증 방식 | 설명 |
-|:---|:---|:---|:---|:---|
-| 데이터 업로드 API | `/api/v1/upload/*` | HTTPS (REST) | OAuth 2.0 + API Key | F1: 파일 업로드, 포맷 자동 인식, 매핑 |
-| 데이터 허브 API | `/api/v1/hub/*` | HTTPS (REST) | OAuth 2.0 | F2: 수집·정제·표준화 파이프라인 |
-| 리포트 API | `/api/v1/reports/*` | HTTPS (REST) | OAuth 2.0 | F3: 무결성 리포트 생성·조회·다운로드 |
-| Badge API | `/api/v1/badges/*` | HTTPS (REST) | OAuth 2.0 | F4: Open Badge 발급·조회·검증 |
-| 인재 열람 API | `/api/v1/talent/*` | HTTPS (REST) | OAuth 2.0 + 열람권 토큰 | F5: 인재 프로필 검색·열람 |
-| 대시보드 API | `/api/v1/dashboard/*` | HTTPS (REST) | OAuth 2.0 | F6: ROI·성과 지표 조회 |
-| LTI 연동 API | `/lti/v1.3/*` | HTTPS (LTI 1.3) | LTI 1.3 Security | F7: LMS 플러그인 연동 |
-| xAPI 프록시 API | `/xapi/v1/*` | HTTPS (xAPI) | OAuth 2.0 | xAPI Statement 수집·조회 |
-| 관리 API | `/api/v1/admin/*` | HTTPS (REST) | OAuth 2.0 (Admin Role) | 테넌트·사용자·권한 관리 |
+| 서비스 구분 | 타입 | 모듈 / 경로 | 설명 |
+|:---|:---|:---|:---|
+| **데이터 업로드/클렌징** | Server Action | `actions/upload.ts` | F1/F2: 클라이언트 파싱된 데이터를 수신, Gemini 호출 및 Prisma DB 저장 |
+| **리포트 무결성 생성** | Server Action | `actions/report.ts` | F3: DB 조회 후 무결성 검증, PDF/Excel 다운로드 링크(Storage) 생성 |
+| **인재/Badge 관리** | Server Action | `actions/talent.ts` | F4/F5: Open Badge 발급 승인 처리, 인재 프로필 권한 기반 조회 |
+| **대시보드 KPI 조회** | Server Component | `app/dashboard/page.tsx` | F6: Prisma 직접 쿼리를 통한 SSR(서버사이드렌더링) 대시보드 집계 |
+| **LTI 연동 / 외부 API** | Route Handler | `/api/lti/launch` | F7: 기존 LMS에서 호출하는 외부 진입점(Webhook/LTI Launch) 처리 |
+| **xAPI / OpenBadge** | Route Handler | `/api/xapi/*`, `/api/badges/*` | 외부 LRS 접속 및 Badge 검증기(Validator)를 위한 외부 공개 규격 API |
 
 ### 3.4 Use Case Diagram
 
@@ -238,183 +243,127 @@ flowchart LR
 | UC-07 | LTI LMS 연동 | 외부 LMS | F7 | REQ-FUNC-035~037 |
 | UC-08 | 시스템 관리 (테넌트·모니터링) | 시스템 관리자 | 공통 | REQ-FUNC-038~044 |
 
-### 3.5 Component Diagram
+### 3.5 Component Diagram (Next.js Monolithic)
 
-> 시스템 내부 컴포넌트의 계층 구조(Client → API → Service → Data)와 외부 시스템 간 의존 관계를 정의한다.
+> 단일 프레임워크 기반 바이브코딩 최적화 아키텍처. 불필요한 마이크로서비스/Gateway 노드를 제거하고 Next.js 모놀리식 구조로 통폐합한다.
 
 ```mermaid
 flowchart TB
-    subgraph ClientLayer["Client Layer"]
-        WebAdmin["웹 애플리케이션<br/>(관리자용)"]
-        WebHR["웹 애플리케이션<br/>(기업 HR용)"]
-        WebLearner["웹 애플리케이션<br/>(학습자용)"]
-        AdminConsole["관리 콘솔<br/>(시스템 관리자)"]
+    subgraph Browser["Client Layer (Browser)"]
+        UI_Components["React UI Components<br/>(Tailwind, shadcn/ui)"]
+        ClientParser["Client-side Parser<br/>(SheetJS 엑셀 파싱)"]
+        UI_Components -- 업로드 파일 --> ClientParser
     end
 
-    subgraph APILayer["API Layer"]
-        APIGW["API Gateway<br/>(OAuth 2.0 · RBAC · Rate Limiting)"]
+    subgraph Vercel["Server Layer (Next.js App Router on Vercel)"]
+        ServerAction["Next.js Server Actions<br/>('use server' 로직)"]
+        RouteHandler["Route Handlers<br/>(/api/* 외부 연동)"]
+        RSC["React Server Components<br/>(서버 데이터 페칭)"]
+        AISDK["Vercel AI SDK<br/>(Prompt & Stream)"]
+        Prisma["Prisma ORM<br/>(DB Access)"]
+        
+        ServerAction --> Prisma
+        ServerAction --> AISDK
+        RouteHandler --> Prisma
+        RSC --> Prisma
     end
 
-    subgraph ServiceLayer["Service Layer (마이크로서비스)"]
-        UploadSvc["Upload Service<br/>(파일 수신·포맷 탐지)"]
-        AIMappingEngine["AI Mapping Engine<br/>(스키마 분석·매핑 추론)"]
-        DataHubSvc["Data Hub Service<br/>(병합·클렌징·정규화)"]
-        ReportSvc["Report Service<br/>(리포트 생성·검증·렌더링)"]
-        BadgeSvc["Badge Service<br/>(발급·규칙엔진·검증)"]
-        TalentSvc["Talent Service<br/>(프로필 관리·검색·열람권)"]
-        DashSvc["Dashboard Service<br/>(KPI 집계·위젯 렌더링)"]
-        LTISvc["LTI Service<br/>(LTI 1.3 Launch·이벤트)"]
-        NotiSvc["Notification Service<br/>(이메일·푸시·Webhook)"]
-        AuthSvc["Auth Service<br/>(OAuth 2.0·RBAC·세션)"]
-    end
-
-    subgraph DataLayer["Data Layer"]
-        MainDB[("PostgreSQL<br/>(Multi-tenant)")]
-        LRS[("xAPI LRS")]
-        ObjStore[("Object Storage<br/>(파일·리포트)")]
-        Cache[("Redis Cache")]
+    subgraph DataLayer["Data Layer & Infra"]
+        SupabaseDB[("Supabase DB<br/>(PostgreSQL)")]
+        SupabaseStorage[("Supabase Storage<br/>(파일/리포트)")]
     end
 
     subgraph ExternalSystems["External Systems"]
-        ExtLMS["기존 LMS<br/>(자이닉스 코스모스 등)"]
-        OpenBadgeInfra["Open Badge<br/>Infra (IMS 2.0)"]
-        HRERP["기관 HR/ERP"]
-        Analytics["Mixpanel<br/>(분석 플랫폼)"]
+        Gemini("Google Gemini API")
+        LRS("xAPI LRS / Open Badge")
     end
 
-    WebAdmin --> APIGW
-    WebHR --> APIGW
-    WebLearner --> APIGW
-    AdminConsole --> APIGW
+    ClientParser -- JSON 통신 --> ServerAction
+    UI_Components -- 동적 호출 --> ServerAction
+    UI_Components -- 네비게이션 --> RSC
 
-    APIGW --> AuthSvc
-    APIGW --> UploadSvc
-    APIGW --> DataHubSvc
-    APIGW --> ReportSvc
-    APIGW --> BadgeSvc
-    APIGW --> TalentSvc
-    APIGW --> DashSvc
-    APIGW --> LTISvc
-
-    UploadSvc --> AIMappingEngine
-    UploadSvc --> ObjStore
-    UploadSvc --> DataHubSvc
-    DataHubSvc --> MainDB
-    DataHubSvc --> LRS
-    ReportSvc --> DataHubSvc
-    ReportSvc --> LRS
-    ReportSvc --> ObjStore
-    BadgeSvc --> LRS
-    BadgeSvc --> OpenBadgeInfra
-    TalentSvc --> BadgeSvc
-    TalentSvc --> MainDB
-    DashSvc --> DataHubSvc
-    DashSvc --> BadgeSvc
-    DashSvc --> TalentSvc
-    DashSvc --> LRS
-    LTISvc --> ExtLMS
-    LTISvc --> LRS
-    NotiSvc --> APIGW
-    AuthSvc --> MainDB
-    AuthSvc --> Cache
-    TalentSvc --> HRERP
-    APIGW --> Analytics
+    AISDK -- LLM 호출 --> Gemini
+    Prisma -- SQL 쿼리 --> SupabaseDB
+    ServerAction -- 파일 적재 --> SupabaseStorage
+    ServerAction -- xAPI/Badge --> LRS
+    RouteHandler -- 외부 통신 --> LRS
 ```
 
-| 계층 | 컴포넌트 | 역할 | 통신 프로토콜 |
+| 계층 | 컴포넌트 | 역할 | 스택 / 도구 |
 |:---|:---|:---|:---|
-| **Client** | WebAdmin, WebHR, WebLearner, AdminConsole | 사용자 인터페이스 | HTTPS |
-| **API** | API Gateway | 인증·인가·라우팅·Rate Limiting | HTTPS (REST) |
-| **Service** | Upload, AI Mapping, Data Hub, Report, Badge, Talent, Dashboard, LTI, Notification, Auth | 비즈니스 로직 처리 | gRPC / REST (내부) |
-| **Data** | PostgreSQL, xAPI LRS, Object Storage, Redis | 데이터 영속화·캐싱 | TCP/TLS |
-| **External** | LMS, Open Badge, HR/ERP, Mixpanel | 외부 연동 | HTTPS (REST/LTI 1.3/xAPI) |
+| **Client** | React Client Components | 사용자 입력, 브라우저 단 엑셀 파싱(서버 부하 감소) | Tailwind, shadcn/ui, SheetJS |
+| **Server** | Next.js App Router | 비즈니스 로직, 데이터 SSR, Vercel AI 연동 | Server Actions, Prisma, AI SDK |
+| **AI** | Google Gemini | AI 기반 데이터 포맷 및 스키마 매핑 추론 | Gemini 1.5 Pro/Flash |
+| **Data** | Supabase | 관계형 데이터베이스 및 Object 스토리지 | PostgreSQL, Supabase Auth/Storage |
 
-### 3.6 Interaction Sequences (핵심 시퀀스 다이어그램)
+### 3.6 Interaction Sequences (Next.js 핵심 시퀀스)
 
-#### 3.6.1 핵심 시퀀스 1: AI 스마트 업로더를 통한 데이터 자동 수집·정제 (F1 + F2)
+#### 3.6.1 핵심 시퀀스 1: 엑셀 클라이언트 파싱 및 AI 기반 매핑 (F1 + F2)
 
 ```mermaid
 sequenceDiagram
-    actor Manager as 사업관리 매니저<br/>(김지수)
-    participant Web as 웹 애플리케이션
-    participant API as API Gateway
-    participant Upload as Upload Service
-    participant AI as AI 포맷 매핑 엔진
-    participant Hub as Data Hub Service
-    participant LRS as xAPI LRS
+    actor Manager as 사업관리 매니저
+    participant Web as Browser (Client Component)
+    participant Action as UploadAction (Server Action)
+    participant AI as Vercel AI SDK (Gemini)
+    participant DB as Prisma (Supabase)
 
-    Manager->>Web: 비표준 파일(엑셀/HWP) 업로드
-    Web->>API: POST /api/v1/upload/files
-    API->>Upload: 파일 수신 및 포맷 탐지
-    Upload->>AI: 비표준 스키마 분석 요청
-    AI-->>Upload: 표준 스키마 매핑 결과 반환
-    Upload->>Hub: 매핑된 데이터 정제 요청
-    Hub->>Hub: 데이터 클렌징·정규화·무결성 검증
-    Hub->>LRS: xAPI Statement 기록 (업로드 이벤트)
-    Hub-->>API: 정제 완료 + 검증 결과
-    API-->>Web: 업로드 완료 알림 + 에러 리포트
-    Web-->>Manager: 처리 결과 대시보드 표시
+    Manager->>Web: 엑셀 파일 선택 및 업로드
+    Web->>Web: (SheetJS) 로컬 파싱 후 JSON 추출
+    Web->>Action: 파싱된 JSON 배열 전송 (Server Action 호출)
+    Action->>Action: 세션 검증
+    Action->>AI: 비표준 스키마 분석 및 매핑 요청 (Prompt)
+    AI-->>Action: 매핑 결과 스트림 반환
+    Action->>DB: 정제/클렌징된 데이터 적재 (Merge)
+    DB-->>Action: 적재 완료
+    Action-->>Web: 응답 결과 및 데이터 품질 점수 반환
+    Web-->>Manager: 처리 결과 렌더링
 ```
 
-#### 3.6.2 핵심 시퀀스 2: 감사 대응 무결성 리포트 자동 생성 (F3)
+#### 3.6.2 핵심 시퀀스 2: 감사 대응 리포트 생성 (F3)
 
 ```mermaid
 sequenceDiagram
-    actor Manager as 사업관리 매니저<br/>(김지수)
-    participant Web as 웹 애플리케이션
-    participant API as API Gateway
-    participant Report as Report Service
-    participant Hub as Data Hub Service
-    participant LRS as xAPI LRS
+    actor Manager as 사업관리 매니저
+    participant Web as Browser
+    participant Action as ReportAction (Server Action)
+    participant DB as Prisma (Supabase DB)
+    participant Storage as Supabase Storage
 
     Manager->>Web: 무결성 리포트 생성 요청
-    Web->>API: POST /api/v1/reports/integrity
-    API->>Report: 리포트 생성 명령
-    Report->>Hub: 통합 데이터 조회
-    Hub-->>Report: 정제 완료 데이터셋
-    Report->>LRS: xAPI 감사 추적 이력 조회
-    LRS-->>Report: 감사 추적 Statement 목록
-    Report->>Report: 무결성 검증 + 리포트 렌더링
-    Report-->>API: 리포트 생성 완료 (PDF/Excel)
-    API-->>Web: 리포트 다운로드 링크
-    Web-->>Manager: 리포트 다운로드 및 미리보기
+    Web->>Action: generateReport() 호출
+    Action->>DB: 통합 대상 데이터 및 xAPI 로깅 데이터 조회
+    DB-->>Action: 검증용 데이터셋
+    Action->>Action: Node.js 단에서 수식 에러/누락 검증
+    Action->>Action: 리포트 렌더링 (PDF/Excel)
+    Action->>Storage: 파일 저장
+    Storage-->>Action: Signed 다운로드 URL
+    Action-->>Web: 리포트 다운로드 링크
+    Web-->>Manager: 즉시 다운로드 시작
 ```
 
-#### 3.6.3 핵심 시퀀스 3: Local Fit Open Badge 발급 및 인재 매칭 (F4 + F5)
+#### 3.6.3 핵심 시퀀스 3: 인재 열람 및 관심 알림 (F5)
 
 ```mermaid
 sequenceDiagram
-    actor Learner as 수료생/학습자
-    actor HR as 앵커기업 HR<br/>(최수영)
-    participant Web as 웹 애플리케이션
-    participant API as API Gateway
-    participant Badge as Badge Service
-    participant LRS as xAPI LRS
-    participant OB as Open Badge Infra
-    participant Talent as Talent Service
+    actor HR as 앵커기업 HR
+    participant Web as Browser
+    participant Action as TalentAction (Server Action)
+    participant DB as Prisma (Supabase)
 
-    Note over Learner,OB: Badge 발급 프로세스
-    Learner->>Web: 교육 이수 + 지역 활동 완료
-    Web->>API: POST /api/v1/badges/issue
-    API->>Badge: Badge 발급 요청
-    Badge->>LRS: xAPI 학습 이력 검증
-    LRS-->>Badge: 학습 Statement 목록
-    Badge->>Badge: Local Fit 기준 충족 여부 판정
-    Badge->>OB: Open Badge 2.0 표준 발급
-    OB-->>Badge: 서명된 Badge Assertion
-    Badge-->>API: Badge 발급 완료
-    API-->>Web: Badge 프로필 업데이트
-    Web-->>Learner: Badge 발급 알림
+    HR->>Web: 인재 검색 (필터 적용)
+    Web->>Action: fetchTalents() 서버액션 호출
+    Action->>DB: 열람권 소진 없이 목록 조회 (RLS 적용)
+    DB-->>Action: 인재 목록 (기본)
+    Action-->>Web: 목록 렌더링
 
-    Note over HR,Talent: 인재 열람 프로세스
-    HR->>Web: 인재 검색 (Local Fit Badge 필터)
-    Web->>API: GET /api/v1/talent/search
-    API->>Talent: 인재 프로필 검색
-    Talent->>Badge: Badge 보유 여부 조회
-    Badge-->>Talent: Badge 검증 결과
-    Talent-->>API: 검색 결과 (Badge 보유 인재 목록)
-    API-->>Web: 인재 프로필 리스트
-    Web-->>HR: 인재 프로필 + Badge 상세 표시
+    HR->>Web: 특정 인재 상세 프로필 열람
+    Web->>Action: viewProfile(userId)
+    Action->>DB: HR 소속 기관의 열람 크레딧 차감 (-1)
+    DB-->>Action: 차감 성공
+    Action->>DB: Badge 포함 상세 정보 조회
+    DB-->>Action: 상세 프로필 데이터
+    Action-->>Web: 카드 형태 렌더링 (shadcn/ui)
 ```
 
 ---
@@ -493,7 +442,7 @@ sequenceDiagram
 
 | Req ID | 요구사항 | Source | Priority | Acceptance Criteria |
 |:---|:---|:---|:---:|:---|
-| REQ-FUNC-035 | 시스템은 LTI 1.3 표준에 따라 외부 LMS와의 플러그인 연동을 지원해야 한다. | JTBD-4 / F7 | Should | **Given** LTI 1.3 호환 LMS(자이닉스 코스모스 등)에서 연동 설정을 완료했을 때 **When** LMS 내에서 본 시스템 플러그인을 호출하면 **Then** SSO(Single Sign-On)가 수행되고, 본 시스템의 데이터 뷰가 LMS 내에 임베드되어 표시된다. |
+| REQ-FUNC-035 | 시스템은 향후 LTI 1.3 표준 플러그인 연동을 위한 규격(임시 엔드포인트)을 준비해 두되, Phase 1에서는 실제 LMS 연동 대신 Mock-up(모의) 인증 테스트까지만 구현한다. | JTBD-4 / F7 | Could | **Given** 모의 LTI Launch 요청이 수신되었을 때 **When** /api/lti/launch 로 파라미터가 인입되면 **Then** 서명 무시 상태로 모의 토큰을 발급하여 테스트 화면을 렌더링한다. (디버깅 지옥 회피 목적) |
 | REQ-FUNC-036 | 시스템은 LTI 연동 시 LMS의 사용자 컨텍스트(과목, 역할, 기관)를 수신하여 적절한 데이터 범위를 제한해야 한다. | F7 | Should | **Given** LMS에서 LTI Launch 요청이 수신되었을 때 **When** 사용자 컨텍스트를 파싱하면 **Then** 시스템은 해당 사용자의 기관 및 과목에 해당하는 데이터만 표시한다. |
 | REQ-FUNC-037 | 시스템은 LTI 연동을 통해 LMS 학습 활동 데이터를 xAPI Statement로 변환하여 LRS에 저장해야 한다. | F7 | Should | **Given** LMS에서 학습 활동(수강 완료, 과제 제출 등) 이벤트가 발생했을 때 **When** LTI 채널을 통해 이벤트가 수신되면 **Then** 시스템은 해당 이벤트를 xAPI Statement로 변환하여 LRS에 저장하고, 변환 로그를 기록한다. |
 
@@ -562,7 +511,7 @@ sequenceDiagram
 | Req ID | 요구사항 | 측정 기준 | 목표값 | Source |
 |:---|:---|:---|:---|:---|
 | REQ-NF-020 | 시스템은 Phase 1(위탁 기관 20개) → Phase 2(50개) → Phase 3(100개 이상) 확장에 대비한 수평 확장(Horizontal Scaling) 구조를 채택해야 한다. | 지원 기관 수 | Phase 1: 20, Phase 2: 50, Phase 3: 100+ | §10 GTM |
-| REQ-NF-021 | 시스템은 컴포저블 SaaS 아키텍처를 채택하여 프론트엔드 교체 납품이 가능하되, 코어 DB는 중앙 통제를 유지해야 한다. | 모듈 분리 구조 | 프론트·백엔드 독립 배포 가능 | CON-03 / §10-3 R5 |
+| REQ-NF-021 | 시스템은 Next.js 기반의 단일 풀스택 프레임워크 아키텍처(Vibe Coding 최적화)를 채택하며, 별도 백엔드를 분리하지 않는다. | 모노레포 단일 앱 구조 | 프론트·백엔드 통합 배포 (Vercel) | 바이브코딩 C-TEC-001 |
 
 #### 4.2.7 비즈니스 성과 KPI (PRD Desired Outcome 기반)
 
@@ -653,48 +602,24 @@ sequenceDiagram
 
 ## 6. Appendix
 
-### 6.1 API Endpoint List
+### 6.1 Server Actions & Route Handlers Master List
 
-| # | HTTP Method | Endpoint | 설명 | 인증 | 관련 Req |
-|:---:|:---|:---|:---|:---|:---|
-| 1 | POST | `/api/v1/upload/files` | 단일/다중 파일 업로드 | OAuth 2.0 + API Key | REQ-FUNC-001, 004, 005 |
-| 2 | GET | `/api/v1/upload/status/{uploadId}` | 업로드 처리 상태 조회 | OAuth 2.0 | REQ-FUNC-004 |
-| 3 | GET | `/api/v1/upload/mapping/{uploadId}` | AI 매핑 결과 미리보기 조회 | OAuth 2.0 | REQ-FUNC-002, 003 |
-| 4 | PUT | `/api/v1/upload/mapping/{uploadId}` | 매핑 수동 보정 | OAuth 2.0 | REQ-FUNC-003 |
-| 5 | GET | `/api/v1/upload/patterns/{orgId}` | 기관별 저장된 매핑 패턴 조회 | OAuth 2.0 | REQ-FUNC-006 |
-| 6 | POST | `/api/v1/hub/merge` | 멀티소스 데이터 병합 실행 | OAuth 2.0 | REQ-FUNC-007 |
-| 7 | POST | `/api/v1/hub/cleanse/{datasetId}` | 데이터 클렌징 실행 | OAuth 2.0 | REQ-FUNC-008 |
-| 8 | GET | `/api/v1/hub/cleanse/{datasetId}/errors` | 클렌징 오류 목록 조회 | OAuth 2.0 | REQ-FUNC-008, 009 |
-| 9 | PUT | `/api/v1/hub/cleanse/{datasetId}/fix` | 오류 보정 적용 | OAuth 2.0 | REQ-FUNC-009 |
-| 10 | GET | `/api/v1/hub/data` | 통합 데이터 조회 (필터링·정렬) | OAuth 2.0 | REQ-FUNC-011 |
-| 11 | GET | `/api/v1/hub/versions/{datasetId}` | 데이터 버전 이력 조회 | OAuth 2.0 | REQ-FUNC-012 |
-| 12 | POST | `/api/v1/hub/rollback/{datasetId}/{versionId}` | 데이터 롤백 실행 | OAuth 2.0 | REQ-FUNC-012 |
-| 13 | POST | `/api/v1/reports/integrity` | 무결성 리포트 생성 | OAuth 2.0 | REQ-FUNC-013, 014, 018 |
-| 14 | GET | `/api/v1/reports/{reportId}` | 리포트 조회 | OAuth 2.0 | REQ-FUNC-014 |
-| 15 | GET | `/api/v1/reports/{reportId}/export` | 리포트 PDF/Excel 내보내기 | OAuth 2.0 | REQ-FUNC-015 |
-| 16 | POST | `/api/v1/reports/schedule` | 자동 리포트 스케줄 설정 | OAuth 2.0 | REQ-FUNC-017 |
-| 17 | POST | `/api/v1/badges/issue` | Local Fit Open Badge 발급 | OAuth 2.0 | REQ-FUNC-019, 022 |
-| 18 | GET | `/api/v1/badges/{badgeId}` | Badge 상세 조회 | OAuth 2.0 | REQ-FUNC-021 |
-| 19 | GET | `/api/v1/badges/verify/{badgeId}` | Badge 공개 검증 (인증 불필요) | Public | REQ-FUNC-021 |
-| 20 | GET | `/api/v1/badges/rules` | Badge 발급 규칙 조회 | OAuth 2.0 (Admin) | REQ-FUNC-020 |
-| 21 | PUT | `/api/v1/badges/rules` | Badge 발급 규칙 설정/수정 | OAuth 2.0 (Admin) | REQ-FUNC-020 |
-| 22 | GET | `/api/v1/badges/dashboard` | Badge KPI 대시보드 조회 | OAuth 2.0 | REQ-FUNC-023 |
-| 23 | GET | `/api/v1/talent/search` | 인재 프로필 검색 | OAuth 2.0 + 열람권 토큰 | REQ-FUNC-024 |
-| 24 | GET | `/api/v1/talent/{profileId}` | 인재 프로필 상세 조회 (열람권 차감) | OAuth 2.0 + 열람권 토큰 | REQ-FUNC-025, 026 |
-| 25 | POST | `/api/v1/talent/{profileId}/interest` | 인재 관심 알림 발송 | OAuth 2.0 | REQ-FUNC-028 |
-| 26 | GET | `/api/v1/dashboard/roi` | ROI 대시보드 데이터 조회 | OAuth 2.0 | REQ-FUNC-029, 030 |
-| 27 | GET | `/api/v1/dashboard/matching` | 인재 매칭 KPI 조회 | OAuth 2.0 | REQ-FUNC-031 |
-| 28 | GET | `/api/v1/dashboard/quality` | 데이터 품질 점수 조회 | OAuth 2.0 | REQ-FUNC-032 |
-| 29 | PUT | `/api/v1/dashboard/layout` | 대시보드 레이아웃 저장 | OAuth 2.0 | REQ-FUNC-033 |
-| 30 | GET | `/api/v1/dashboard/export` | 대시보드 CSV/PDF 내보내기 | OAuth 2.0 | REQ-FUNC-034 |
-| 31 | POST | `/lti/v1.3/launch` | LTI 1.3 Launch 수신 | LTI 1.3 Security | REQ-FUNC-035, 036 |
-| 32 | POST | `/lti/v1.3/events` | LMS 학습 이벤트 수신 | LTI 1.3 Security | REQ-FUNC-037 |
-| 33 | POST | `/xapi/v1/statements` | xAPI Statement 저장 | OAuth 2.0 | REQ-FUNC-010, 016, 027 |
-| 34 | GET | `/xapi/v1/statements` | xAPI Statement 조회 | OAuth 2.0 | REQ-FUNC-010, 016, 027 |
-| 35 | POST | `/api/v1/admin/tenants` | 테넌트 생성 | OAuth 2.0 (Admin) | REQ-FUNC-039 |
-| 36 | GET | `/api/v1/admin/audit-logs` | 감사 로그 조회 | OAuth 2.0 (Admin) | REQ-FUNC-040 |
-| 37 | PUT | `/api/v1/admin/users/{userId}/settings` | 사용자 알림 설정 변경 | OAuth 2.0 | REQ-FUNC-043 |
-| 38 | GET | `/api/v1/admin/monitoring` | 시스템 모니터링 지표 조회 | OAuth 2.0 (Admin) | REQ-NF-018 |
+> 단일 프레임워크 기반 설계 원칙에 따라 내부 API는 모두 브라우저에서 직접 호출 가능한 Next.js Server Actions로 전환되었습니다.
+
+| # | 구분 | 모듈 경로 (Action명/Route) | 설명 | 권한 / 인증 |
+|:---:|:---|:---|:---|:---|
+| 1 | Action | `actions/upload.ts` (`uploadAndParseExcel`) | F1: 클라이언트에서 파싱된 JSON을 수신하여 AI 매핑 진행 | Session (Manager) |
+| 2 | Action | `actions/upload.ts` (`getUploadHistory`) | F1: 업로드 처리 내역을 조회하여 SSR 컴포넌트로 주입 | Session (Manager) |
+| 3 | Action | `actions/upload.ts` (`confirmAiMapping`) | F1: AI 규칙 제안에 대한 수동 보정 승인 | Session (Manager) |
+| 4 | Action | `actions/dataset.ts` (`mergeDatasets`) | F2: 멀티소스 데이터 병합 (Prisma Transaction) | Session (Manager) |
+| 5 | Action | `actions/dataset.ts` (`rollbackDataset`) | F2: 특정 버전으로 Prisma DB 롤백 실행 | Session (Manager) |
+| 6 | Action | `actions/report.ts` (`generateIntegrityReport`) | F3: 무결성 검증, PDF/Excel 렌더링 후 Supabase Storage 저장 | Session (Manager) |
+| 7 | Action | `actions/badge.ts` (`issueBadge`) | F4: Local Fit Badge 발급 제어 | Server Context |
+| 8 | Action | `actions/talent.ts` (`searchTalents`) | F5: 인재 요약 프로필 조건/키워드 검색 | Session (HR) |
+| 9 | Action | `actions/talent.ts` (`viewTalentDetail`) | F5: 열람권 차감 로직 동반 상세 정보 반환 | Session (HR) |
+| 10 | Route | `GET /api/v1/badges/verify/{badgeId}` | 외부 제3자가 Badge 진위를 검증하기 위한 공개 API | Public |
+| 11 | Route | `POST /api/lti/launch` | 기존 LMS에서의 LTI 연동 (Phase 1 Mock-up 용도) | LTI Security |
+| 12 | Route | `POST /api/xapi/statements` | 독립된 외부 xAPI Statement 수신을 위한 채널 | API Key |
 
 ### 6.2 Entity & Data Model
 
@@ -892,421 +817,152 @@ erDiagram
     Badge }o--|| TalentProfile : "included in"
 ```
 
-#### 6.2.3 Class Diagram (도메인 서비스 계층)
+#### 6.2.3 Module & State Management Architecture (Next.js)
 
-> 핵심 도메인 서비스 클래스와 Entity 간 의존·소유·연관 관계를 정의한다.
+> 기존 Java 스프링 방식의 Service 클래스 구조를 바이브코딩 최적화 Next.js 스택(Prisma Client + Server Actions + UI Store)으로 재정의합니다.
 
 ```mermaid
 classDiagram
-    class UploadService {
-        +uploadFiles(files, orgId) Upload[]
-        +getUploadStatus(uploadId) UploadStatus
-        +getMappingPreview(uploadId) MappingResult
-        +confirmMapping(uploadId, mappingData) void
-        -detectFormat(file) FileFormat
-        -storeFile(file) StoragePath
+    class UI_Components_State {
+        +useState / useStore(Zustand)
+        +ExcelParser(SheetJS)
+        +RenderView()
+    }
+    
+    class Prisma_Schema {
+        +User (model)
+        +Organization (model)
+        +Upload (model)
+        +Dataset (model)
+        +Badge (model)
+        +TalentProfile (model)
+        +AuditLog (model)
     }
 
-    class AIMappingEngine {
-        +analyzeSchema(file) SchemaAnalysis
-        +generateMapping(source, target) MappingResult
-        +learnPattern(orgId, mapping) void
-        +getPattern(orgId) MappingPattern
-        -inferColumns(source) ColumnMapping[]
-        -calculateConfidence(mapping) float
+    class UploadActions {
+        +"use server"
+        +uploadAndParse(jsonParams) Result
+        +confirmMapping(schema) void
     }
 
-    class DataHubService {
-        +mergeDatasets(uploadIds) Dataset
-        +cleanseData(datasetId) CleansingResult
-        +applyFix(datasetId, fixData) void
-        +queryData(filters) DataPage
-        +getVersionHistory(datasetId) Version[]
-        +rollback(datasetId, versionId) void
-        -detectAnomalies(data) Anomaly[]
-        -calculateQualityScore(dataset) float
+    class ReportActions {
+        +"use server"
+        +generateIntegrityReport(datasetId) StorageURL
     }
 
-    class ReportService {
-        +generateIntegrityReport(datasetId) Report
-        +exportReport(reportId, format) File
-        +scheduleReport(config) Schedule
-        -validateReport(report) ValidationResult
-        -renderPDF(report) File
-        -renderExcel(report) File
+    class BadgeActions {
+        +"use server"
+        +issueBadge(learnerId, criteria) Badge
+        +evaluateEligibility(learnerId) boolean
     }
 
-    class BadgeService {
-        +issueBadge(learnerId, classId) Badge
-        +verifyBadge(badgeId) VerificationResult
-        +evaluateEligibility(learnerId) EligibilityResult
-        +getRules() BadgeRule[]
-        +updateRules(rules) void
-        +getDashboardKPI() BadgeKPI
-        -checkCriteria(statements, rules) boolean
-    }
-
-    class TalentService {
+    class TalentActions {
+        +"use server"
         +searchProfiles(filters) TalentProfile[]
-        +getProfile(profileId, creditId) TalentProfile
-        +sendInterestNotification(profileId, mode) void
-        +trackViewToInterview(profileId) ConversionRate
-        -deductCredit(orgId) void
+        +deductCreditAndShowDetail(userId) TalentProfile
     }
 
-    class DashboardService {
-        +getROIData() ROIDashboard
-        +getMatchingKPI() MatchingKPI
-        +getQualityScores() QualityRanking[]
-        +saveLayout(userId, layout) void
-        +exportDashboard(format) File
-        -aggregateMetrics() Metrics
+    class VercelAI_SDK {
+        +generateText(prompt)
+        +streamText(prompt)
+        +GoogleGemini_Model
     }
 
-    class AuthService {
-        +authenticate(credentials) Token
-        +authorize(token, resource) boolean
-        +lockAccount(userId) void
-        -validateToken(token) Claims
-        -hashPassword(password) string
-    }
+    UI_Components_State ..> UploadActions : invokes via Form
+    UI_Components_State ..> ReportActions : invokes
+    UI_Components_State ..> BadgeActions : invokes
+    UI_Components_State ..> TalentActions : invokes
 
-    class LTIService {
-        +handleLaunch(launchData) Session
-        +receiveEvent(event) void
-        -parseContext(launchData) UserContext
-        -convertToXAPI(event) Statement
-    }
+    UploadActions ..> Prisma_Schema : CRUD
+    UploadActions ..> VercelAI_SDK : 엑셀 스키마 매핑 추론
 
-    class NotificationService {
-        +sendEmail(to, template, data) void
-        +sendPush(userId, message) void
-        +sendWebhook(url, payload) void
-        +updatePreferences(userId, pref) void
-    }
-
-    class Organization {
-        +org_id: UUID
-        +org_name: string
-        +org_type: OrgType
-        +region: string
-        +tier: Tier
-    }
-
-    class User {
-        +user_id: UUID
-        +email: string
-        +role: Role
-        +is_locked: boolean
-    }
-
-    class Upload {
-        +upload_id: UUID
-        +file_format: FileFormat
-        +status: UploadStatus
-        +mapping_result: JSON
-    }
-
-    class Dataset {
-        +dataset_id: UUID
-        +version: int
-        +status: DatasetStatus
-        +quality_score: float
-    }
-
-    class Report {
-        +report_id: UUID
-        +report_type: ReportType
-        +status: ReportStatus
-        +validation_result: JSON
-    }
-
-    class Badge {
-        +badge_id: UUID
-        +assertion_json: JSON
-        +verification_url: string
-        +is_revoked: boolean
-    }
-
-    class TalentProfile {
-        +profile_id: UUID
-        +badges: JSON
-        +learning_summary: JSON
-        +is_public: boolean
-    }
-
-    UploadService --> AIMappingEngine : uses
-    UploadService --> DataHubService : feeds data
-    UploadService ..> Upload : manages
-    AIMappingEngine ..> MappingPattern : reads/writes
-    DataHubService ..> Dataset : manages
-    DataHubService ..> CleansingLog : produces
-    ReportService --> DataHubService : queries data
-    ReportService ..> Report : manages
-    BadgeService ..> Badge : issues
-    BadgeService ..> BadgeClass : configures
-    TalentService --> BadgeService : verifies badges
-    TalentService ..> TalentProfile : manages
-    TalentService ..> ViewingCredit : consumes
-    DashboardService --> DataHubService : aggregates
-    DashboardService --> BadgeService : queries KPI
-    DashboardService --> TalentService : queries KPI
-    LTIService --> BadgeService : triggers evaluation
-    NotificationService --> User : notifies
-    AuthService ..> User : authenticates
-    Organization "1" --> "*" User : employs
-    User "1" --> "*" Upload : performs
-    User "1" --> "0..1" TalentProfile : owns
-
-    class MappingPattern {
-        +pattern_id: UUID
-        +confidence_score: float
-    }
-    class CleansingLog {
-        +log_id: UUID
-        +error_type: ErrorType
-    }
-    class BadgeClass {
-        +badge_class_id: UUID
-        +criteria_rules: JSON
-    }
-    class ViewingCredit {
-        +credit_id: UUID
-        +remaining_credits: int
-    }
+    ReportActions ..> Prisma_Schema : 데이터 로드
+    BadgeActions ..> Prisma_Schema : 로드 및 자격 갱신
+    TalentActions ..> Prisma_Schema : RLS/크레딧 제어
 ```
 
-### 6.3 Detailed Interaction Models (상세 시퀀스 다이어그램)
+### 6.3 Detailed Interaction Models (상세 시퀀스)
 
-#### 6.3.1 상세 시퀀스: 파일 업로드 → AI 매핑 → 데이터 정제 → 리포트 생성 (End-to-End)
+> 바이브코딩 최적화를 위해 복잡한 중간 계층을 제거하고 클라이언트 파싱과 서버액션으로 통합된 설계 구조를 나타냅니다.
+
+#### 6.3.1 엑셀 클라이언트 파싱 및 Server Action 매핑 로직 (Vercel Timeout 회피형)
 
 ```mermaid
 sequenceDiagram
-    actor Manager as 사업관리 매니저
-    participant Web as 웹 브라우저
-    participant GW as API Gateway
-    participant Auth as Auth Service
-    participant UL as Upload Service
-    participant AI as AI Mapping Engine
-    participant Hub as Data Hub Service
-    participant LRS as xAPI LRS
-    participant Rpt as Report Service
-    participant Noti as Notification Service
-    participant Store as Object Storage
+    actor Manager as 관리자
+    participant Web as Browser (React Component)
+    participant Action as Next.js Server Action
+    participant AI as Vercel AI (Gemini)
+    participant DB as Prisma (Supabase DB)
+    participant Store as Supabase Storage
 
-    Note over Manager, Store: Phase 1 - 파일 업로드 및 포맷 탐지
-    Manager->>Web: 비표준 파일 10개 선택 후 업로드
-    Web->>GW: POST /api/v1/upload/files (multipart)
-    GW->>Auth: OAuth 2.0 토큰 검증
-    Auth-->>GW: 인증 성공 (role=MANAGER)
-    GW->>UL: 파일 수신 요청
-    UL->>Store: 원본 파일 저장
-    Store-->>UL: 저장 완료 (storage_path)
-    UL->>UL: 파일 포맷 탐지 (XLSX/XLS/HWP/CSV)
-    UL->>LRS: xAPI Statement 기록 (Actor=Manager, Verb=uploaded, Object=files)
-
-    Note over UL, AI: Phase 2 - AI 스키마 매핑
-    UL->>AI: 비표준 스키마 분석 요청 (10 파일)
-    AI->>AI: 기관별 저장 패턴 조회
-    alt 기존 패턴 존재
-        AI-->>UL: 기존 패턴 자동 적용 (confidence >= 0.90)
-    else 신규 기관
-        AI->>AI: ML 기반 컬럼 매핑 추론
-        AI-->>UL: 매핑 제안 생성 (confidence 표시)
-    end
-    UL-->>GW: 매핑 결과 반환
-    GW-->>Web: 매핑 미리보기 표시
-    Manager->>Web: 매핑 확인/보정 후 승인
-    Web->>GW: PUT /api/v1/upload/mapping/{uploadId}
-    GW->>UL: 매핑 확정
-    UL->>AI: 매핑 패턴 학습 및 저장
-
-    Note over Hub, LRS: Phase 3 - 데이터 클렌징 및 통합
-    UL->>Hub: 매핑 완료 데이터 전달
-    Hub->>Hub: 데이터 병합 (Merge)
-    Hub->>Hub: 자동 클렌징 실행 (결측값, 이상값, 수식 검증)
-    Hub->>LRS: xAPI Statement 기록 (Verb=cleansed)
-    alt 오류 발견
-        Hub-->>GW: 오류 목록 + 보정 제안
-        GW-->>Web: 오류 보정 화면 표시
-        Manager->>Web: 보정 승인/무시
-        Web->>GW: PUT /api/v1/hub/cleanse/{datasetId}/fix
-        GW->>Hub: 보정 적용
-        Hub->>LRS: xAPI Statement 기록 (Verb=corrected)
-    end
-    Hub->>Hub: 데이터 품질 점수 산출
-    Hub-->>GW: 정제 완료 (quality_score)
-
-    Note over Rpt, Store: Phase 4 - 무결성 리포트 생성
-    Manager->>Web: 무결성 리포트 생성 요청
-    Web->>GW: POST /api/v1/reports/integrity
-    GW->>Rpt: 리포트 생성 명령
-    Rpt->>Hub: 정제 완료 데이터셋 조회
-    Hub-->>Rpt: 데이터셋 반환
-    Rpt->>LRS: 감사 추적 이력 조회
-    LRS-->>Rpt: xAPI Statement 이력
-    Rpt->>Rpt: 자동 검증 (수식 무결성, 누락 필드, 타입 일관성)
-    alt 검증 통과
-        Rpt->>Rpt: 리포트 렌더링 (PDF/XLSX)
-        Rpt->>Store: 리포트 파일 저장
-        Rpt->>LRS: xAPI Statement 기록 (Verb=generated, Object=report)
-        Rpt-->>GW: 리포트 생성 완료
-        GW-->>Web: 다운로드 링크 제공
-        Noti->>Manager: 리포트 생성 완료 알림
-    else 검증 실패
-        Rpt-->>GW: 에러 리포트 반환
-        GW-->>Web: 에러 상세 표시
-        Noti->>Manager: 에러 알림 발송
-    end
+    Manager->>Web: 엑셀 파일 10개 첨부 후 로드
+    Web->>Web: SheetJS 파일 바이너리 로드
+    Web->>Web: JSON Array 포맷으로 로컬 파싱 변환 (서버 부하 제거)
+    Web->>Action: uploadAndParse(json_payload)
+    Action->>Action: 사용자 Session 세션 검사
+    Action->>Store: 원본 엑셀 파일 아카이빙 저장 (Supabase)
+    
+    Action->>AI: generateObject() / streamText() 로 스키마 매핑 요청
+    AI-->>Action: 통일된 DTO 포맷 매핑 제안
+    
+    Action->>DB: Dataset 테이블에 JSONB 형태로 Insert/Update
+    DB-->>Action: 완료
+    Action-->>Web: "처리 완료" 응답과 매핑 편집기(UI) 표출
+    Manager->>Web: 수동 편집 후 승인버튼
 ```
 
-#### 6.3.2 상세 시퀀스: Local Fit Badge 발급 (자동 판정 프로세스)
+#### 6.3.2 Local Fit Badge 발급 제어 시퀀스
 
 ```mermaid
 sequenceDiagram
     actor Learner as 학습자
-    participant LMS as 기존 LMS
-    participant LTI as LTI Service
-    participant LRS as xAPI LRS
-    participant Badge as Badge Service
-    participant Rules as Rules Engine
-    participant OB as Open Badge Infra
-    participant Noti as Notification Service
-    participant Profile as TalentProfile Service
+    participant Web as Browser
+    participant Action as Badge Server Action
+    participant DB as Prisma DB
+    participant OB as OpenBadge Library
 
-    Note over Learner, LMS: Step 1 - 학습 활동 데이터 누적
-    Learner->>LMS: 교육 이수 / 과제 제출 / 해커톤 참여
-    LMS->>LTI: LTI 1.3 이벤트 전송
-    LTI->>LTI: 이벤트를 xAPI Statement로 변환
-    LTI->>LRS: xAPI Statement 저장 (Verb=completed/participated)
-    LRS-->>LTI: 저장 확인
-
-    Note over Badge, Rules: Step 2 - 자동 자격 판정
-    Badge->>LRS: 학습자별 xAPI Statement 집계 조회
-    LRS-->>Badge: Statement 집합 반환
-    Badge->>Rules: 발급 규칙 대조 요청
-    Rules->>Rules: 규칙 평가 (교육 이수 >= 3회 AND 해커톤 >= 1회 AND 지역 활동 >= 2회)
-    alt 규칙 충족
-        Rules-->>Badge: 자격 충족 (ELIGIBLE)
-        Badge->>OB: Open Badge 2.0 Assertion 서명 발급 요청
-        OB->>OB: Assertion 생성 + 디지털 서명
-        OB-->>Badge: 서명된 Assertion + verification_url
-        Badge->>Badge: Badge 레코드 저장
-        Badge->>Profile: TalentProfile 업데이트 (Badge 추가)
-        Profile-->>Badge: 프로필 업데이트 완료
-        Badge->>LRS: xAPI Statement 기록 (Verb=earned, Object=badge)
-        Badge->>Noti: Badge 발급 알림 요청
-        Noti-->>Learner: "Local Fit Badge가 발급되었습니다" 알림
-    else 규칙 미충족
-        Rules-->>Badge: 자격 미충족 (NOT_ELIGIBLE, 부족 항목 명시)
-        Badge->>Badge: 미충족 사유 로깅
+    Learner->>Web: 내 학습 이력 / 배지 조회
+    Web->>Action: getUserBadges()
+    Action->>DB: xAPI / 활동 이력 조회
+    DB-->>Action: 활동 요약 레코드 (배지 룰 체크)
+    
+    Action->>Action: 교육 이수 3건 이상 등 조건 판단 (Eligibility)
+    alt 미충족
+        Action-->>Web: 현재까지의 진행률 표출 (70%)
+    else 충족
+        Action->>OB: OpenBadge 2.0 규격 JSON 생성 및 암호학적 서명
+        OB-->>Action: Assertion 토큰
+        Action->>DB: Badge 발급 DB 기록 (isIssued = true)
+        Action-->>Web: 신규 배지 발급 완료 상태 표출
     end
 ```
 
-#### 6.3.3 상세 시퀀스: 기업 HR 인재 열람 → 관심 표시 → 면접 전환 추적
+#### 6.3.3 인재 매칭 및 열람 크레딧 차감 시퀀스
 
 ```mermaid
 sequenceDiagram
-    actor HR as 앵커기업 HR (최수영)
-    participant Web as 웹 브라우저
-    participant GW as API Gateway
-    participant Auth as Auth Service
-    participant Talent as Talent Service
-    participant Badge as Badge Service
-    participant Credit as Credit Service
-    participant LRS as xAPI LRS
-    participant Noti as Notification Service
-    actor Learner as 인재(학습자)
+    actor HR as 앵커기업 HR
+    participant Web as Browser
+    participant Action as Talent Action
+    participant DB as Prisma DB
 
-    Note over HR, Auth: Step 1 - 인재 검색
-    HR->>Web: 인재 검색 (필터: Local Fit Badge + 직무)
-    Web->>GW: GET /api/v1/talent/search?badge=local_fit&skill=backend
-    GW->>Auth: 토큰 검증 (role=HR)
-    Auth-->>GW: 인증 및 인가 성공
-    GW->>Talent: 인재 검색 요청
-    Talent->>Badge: Badge 보유자 필터링
-    Badge-->>Talent: Badge 보유 인재 ID 목록
-    Talent-->>GW: 검색 결과 (요약 프로필 목록)
-    GW-->>Web: 인재 목록 표시
-
-    Note over HR, Credit: Step 2 - 상세 프로필 열람 (열람권 차감)
-    HR->>Web: 인재 상세 프로필 열람 클릭
-    Web->>GW: GET /api/v1/talent/{profileId}
-    GW->>Credit: 잔여 열람권 확인
-    Credit-->>GW: 잔여 9건 -> 열람 가능
-    GW->>Talent: 상세 프로필 조회
-    Talent-->>GW: 상세 프로필 (Badge + 학습이력 + 지역활동)
-    GW->>Credit: 열람권 1건 차감
-    Credit-->>GW: 차감 완료 (잔여 8건)
-    GW->>LRS: xAPI Statement (HR viewed talent_profile)
-    GW-->>Web: 상세 프로필 표시
-
-    Note over HR, Learner: Step 3 - 관심 알림 발송
-    HR->>Web: "관심 표시" 버튼 클릭 (익명 선택)
-    Web->>GW: POST /api/v1/talent/{profileId}/interest
-    GW->>Noti: 관심 알림 발송 요청 (익명)
-    Noti-->>Learner: "귀하의 프로필에 관심을 표시한 기업이 있습니다"
-    GW->>LRS: xAPI Statement (HR expressed_interest talent_profile)
-
-    Note over HR, LRS: Step 4 - 면접 전환 추적
-    HR->>Web: 면접 제안 발송
-    Web->>GW: POST /api/v1/talent/{profileId}/interview
-    GW->>LRS: xAPI Statement (HR invited_interview talent_profile)
-    GW->>Noti: 면접 제안 알림
-    Noti-->>Learner: "면접 요청이 도착했습니다"
-```
-
-#### 6.3.4 상세 시퀀스: ROI·성과 대시보드 데이터 집계
-
-```mermaid
-sequenceDiagram
-    actor Admin as 관리자
-    participant Web as 웹 브라우저
-    participant GW as API Gateway
-    participant Dash as Dashboard Service
-    participant Hub as Data Hub Service
-    participant Badge as Badge Service
-    participant Talent as Talent Service
-    participant LRS as xAPI LRS
-
-    Admin->>Web: ROI 대시보드 접근
-    Web->>GW: GET /api/v1/dashboard/roi
-    GW->>Dash: 대시보드 데이터 집계 요청
-
-    par 병렬 데이터 수집
-        Dash->>Hub: 월별 데이터 취합 소요 시간 조회
-        Hub-->>Dash: 월별 처리 시간 추이 데이터
-    and
-        Dash->>Hub: 리포트 에러 건수 조회
-        Hub-->>Dash: 월별 에러 건수 (목표: 0건)
-    and
-        Dash->>Badge: Badge 발급 KPI 조회
-        Badge-->>Dash: 발급 건수, 열람률
-    and
-        Dash->>Talent: 인재 매칭 KPI 조회
-        Talent-->>Dash: 열람에서 면접 전환율, 채용 확정 건수
-    and
-        Dash->>Hub: 기관별 데이터 품질 점수 조회
-        Hub-->>Dash: 기관별 quality_score 순위
-    and
-        Dash->>LRS: xAPI 기반 학습 활동 집계
-        LRS-->>Dash: 학습 활동 통계
+    HR->>Web: C-3 인재 데이터 검색
+    Web->>Action: searchTalents(Badge=Silver)
+    Action->>DB: SELECT profiles WHERE badge = 'Silver'
+    DB-->>Action: 결과(마스킹 상태) 
+    Action-->>Web: 리스트 카드형 UI 렌더링
+    
+    HR->>Web: 박지성 프로필 열람 클릭 
+    Web->>Action: viewProfileDetail(req.profileId)
+    Action->>DB: ORM Transaction 시작
+    DB->>DB: UPDATE Organization SET credit = credit - 1 WHERE id = hr.orgId (Validation)
+    alt 크레딧 잔액 0
+        Action-->>Web: Error: 열람권 부족 안내 Modal
+    else 
+        DB->>DB: SELECT 상세 프로필 노출분
+        Action-->>Web: 수집된 상세 데이터 렌더링
     end
-
-    Dash->>Dash: 대시보드 위젯 렌더링
-    Dash-->>GW: 집계 완료 데이터
-    GW-->>Web: 대시보드 표시
-
-    alt 에러 건수 >= 1
-        Dash->>GW: 알림 트리거
-        GW->>Admin: "보고서 에러 발생" 알림
-    end
-
-    Admin->>Web: CSV 내보내기 클릭
-    Web->>GW: GET /api/v1/dashboard/export?format=csv
-    GW->>Dash: CSV 생성
-    Dash-->>GW: CSV 파일
-    GW-->>Web: 다운로드 시작
 ```
 
 ### 6.4 Validation Plan (검증 계획)
@@ -1324,6 +980,16 @@ sequenceDiagram
 | E7 | RISE First-mover 기회 창 확보 | C-3/C-2 기관 파일럿 계약 체결 속도 측정 | Phase 1 내 3건 선점 | 계약 체결일 트래킹 | CON-05 |
 | E8 | H4: Cascade 파급 효과 (3.5배 확산) | 전산처 도입 후 산하 기관 연쇄 도입율 추적 | 산하 기관 도입율 >= 70% | 기관 도입 이력 대시보드 | — |
 
+---
+
+### 7. 미결 사항 (Open Issues)
+
+본 MVP 시스템 구축에 앞서 확정/조정이 필요한 "바이브코딩 최적화" 파생 이슈 2건을 명시합니다.
+
+1. **Vercel 무료 플랜 배포 환경에서의 타임아웃 제한 방어 구조**
+   - Vercel Serverless Function (10초/15초 제한) 이슈를 완전히 해결하기 위해 앞서 시도한 "엑셀의 클라이언트 단 1차 파싱 구조(Browser Parsing)"가 필수로 적용되었습니다. 해당 방식의 브라우저 메모리 부하 수준이나, 수만 Row 데이터 업로드 발생 시나리오에 대비한 가이드가 필요합니다. 대량 파싱은 Chunking하여 여러 번 Server Action을 날리는 형태로 UI를 보완할 예정입니다.
+2. **LTI 1.3 표준의 높은 디버깅 난이도(AI 약점) 대응**
+   - OAuth 2.0, JWKS 등 암호화 통신 명세가 복잡한 LTI 1.3 통신은 AI(Gemini)가 정확한 보일러플레이트를 짜기 매우 취약한 영역입니다. Phase 1 스코프에서 이 요구사항은 "향후 확장을 대비한 빈 API 라우트(Mock-up)"만 구축하며, 실질 인증과 구현은 MVP에서 배제하는 것을 권장합니다.
 ---
 
 *— 문서 종료 — SRS-001 v1.0*
